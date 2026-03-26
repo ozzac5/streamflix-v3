@@ -1,0 +1,217 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User Model - المستخدمين
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  password      String?
+  role          String   @default("user") // user, admin
+  avatar        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  watchHistory  WatchHistory[]
+  favorites     Favorite[]
+}
+
+// Category Model - التصنيفات
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  icon        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  movies      Movie[]
+  series      Series[]
+  channels    Channel[]
+}
+
+// Movie Model - الأفلام
+model Movie {
+  id              String   @id @default(cuid())
+  title           String
+  slug            String   @unique
+  description     String?
+  posterUrl       String?
+  backdropUrl     String?
+  videoUrl        String?    // رابط الفيديو المباشر أو m3u8
+  trailerUrl      String?
+  imdbId          String?    // IMDB ID
+  imdbRating      Float?
+  year            Int?
+  duration        Int?       // بالدقائق
+  quality         String?    // HD, 4K, 1080p
+  language        String?
+  country         String?
+  isFeatured      Boolean  @default(false)
+  isTrending      Boolean  @default(false)
+  views           Int      @default(0)
+  categoryId      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  category        Category?  @relation(fields: [categoryId], references: [id])
+  watchHistory    WatchHistory[]
+  favorites       Favorite[]
+}
+
+// Series Model - المسلسلات
+model Series {
+  id              String   @id @default(cuid())
+  title           String
+  slug            String   @unique
+  description     String?
+  posterUrl       String?
+  backdropUrl     String?
+  trailerUrl      String?
+  imdbId          String?
+  imdbRating      Float?
+  year            Int?
+  endYear         Int?
+  status          String?   // ongoing, ended
+  language        String?
+  country         String?
+  isFeatured      Boolean  @default(false)
+  isTrending      Boolean  @default(false)
+  views           Int      @default(0)
+  categoryId      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  category        Category?  @relation(fields: [categoryId], references: [id])
+  seasons         Season[]
+  watchHistory    WatchHistory[]
+  favorites       Favorite[]
+}
+
+// Season Model - المواسم
+model Season {
+  id              String   @id @default(cuid())
+  seriesId        String
+  seasonNumber    Int
+  title           String?
+  description     String?
+  posterUrl       String?
+  year            Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  series          Series    @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  episodes        Episode[]
+}
+
+// Episode Model - الحلقات
+model Episode {
+  id              String   @id @default(cuid())
+  seasonId        String
+  episodeNumber   Int
+  title           String?
+  description     String?
+  thumbnailUrl    String?
+  videoUrl        String?   // رابط الفيديو المباشر أو m3u8
+  duration        Int?      // بالدقائق
+  views           Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  season          Season    @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  watchHistory    WatchHistory[]
+}
+
+// Channel Model - القنوات
+model Channel {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  logoUrl         String?
+  streamUrl       String?   // رابط البث m3u8
+  epgUrl          String?   // دليل البرامج
+  categoryId      String?
+  isLive          Boolean  @default(true)
+  country         String?
+  language        String?
+  views           Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  category        Category?  @relation(fields: [categoryId], references: [id])
+}
+
+// WatchHistory Model - سجل المشاهدة
+model WatchHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  movieId     String?
+  seriesId    String?
+  episodeId   String?
+  progress    Float    @default(0)  // نسبة المشاهدة
+  lastWatched DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie       Movie?    @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  series      Series?   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  episode     Episode?  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+}
+
+// Favorite Model - المفضلة
+model Favorite {
+  id          String   @id @default(cuid())
+  userId      String
+  movieId     String?
+  seriesId    String?
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie       Movie?   @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  series      Series?  @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, movieId, seriesId])
+}
+
+// Banner Model - البانرات الرئيسية
+model Banner {
+  id          String   @id @default(cuid())
+  title       String
+  subtitle    String?
+  imageUrl    String
+  movieId     String?
+  seriesId    String?
+  linkUrl     String?
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// App Settings - إعدادات التطبيق
+model Setting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
